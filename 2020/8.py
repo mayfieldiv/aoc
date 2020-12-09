@@ -25,4 +25,4 @@ def run(flip_i=-1):
 
 run() # part 1
 for i in range(len(instructions)):
-    run(i) # will throw when correct
+    run(i) # throws when correct
