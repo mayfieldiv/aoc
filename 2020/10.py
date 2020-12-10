@@ -16,7 +16,6 @@ def solve():
     return c1 * c3
 
 def solve2():
-    return
     start = 0
     count = 1
     for i, (a, b) in enumerate(zip(w, w[1:])):
