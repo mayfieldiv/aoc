@@ -10,7 +10,7 @@ from utils import clip
 # w = list(map(int, input().split()))
 
 def solve():
-
+    
     return
 
 def solve2():
@@ -25,4 +25,5 @@ s2 = solve2()
 print("\n******************* PART 2 *******************")
 print("solve2():", s2)
 
-clip(s2 if s2 != None else s1)
+if s2 != None: clip(s2)
+elif s1 != None: clip(s1)
