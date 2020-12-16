@@ -1,65 +1,56 @@
-import sys, re, math, itertools, heapq
+import sys, math
 from utils import clip, main
-from collections import Counter, defaultdict, deque, OrderedDict
-from functools import reduce, lru_cache
+from functools import partial
 
-# lines = [x.strip() for x in sys.stdin]
-# lines = [int(x) for x in sys.stdin]
-# lines = list(map(int, input().split()))
 fields, mine, near = [x.strip().split('\n') for x in sys.stdin.read().split("\n\n")]
-lf = len(fields)
+mine = list(map(int, mine[1].split(',')))
+near = [list(map(int, t.split(','))) for t in near[1:]]
 
-def in_range(v, r):
-    a, b = map(int, r.split('-'))
-    # print(v, r, a <= v <= b)
-    return a <= v <= b
+def in_range(rang, v):
+    def inner(r):
+        a, b = map(int, r.split('-'))
+        # print(v, r, a <= v <= b)
+        return a <= v <= b
+    r1, r2 = rang.split(' or ')
+    return inner(r1) or inner(r2)
 
-def valid(v, field):
-    return any(in_range(int(v), r) for r in field.split(': ')[1].split(' or '))
+fields = {field: partial(in_range, rang) for field, rang in [x.split(': ') for x in fields]}
 
 def solve1():
     invalid = []
-    for tickets in near[1:]:
-        values = [int(x) for x in tickets.split(',')]
-        for i, v in enumerate(values):
-            if not any(valid(v, fields[ii]) for ii in range(lf)):
+    for ticket in near:
+        for v in ticket:
+            if not any(f(v) for f in fields.values()):
                 invalid.append(v)
 
     print(invalid)
     return sum(invalid)
 
 def solve2():
-    invalid = []
-    for i, tickets in enumerate(near[1:]):
-        values = [int(x) for x in tickets.split(',')]
-        for v in values:
-            if not any(valid(v, fields[ii]) for ii in range(lf)):
-                invalid.append(i)
-    tickets = mine[1:] + [x for i, x in enumerate(near[1:]) if i not in invalid]
-
-    # print(tickets)
-    poss = [[] for _ in range(lf)]
-    for field in fields:
-        for i in range(lf):
-            # print(i, sorted([int(x.split(',')[i]) for x in tickets]), field)
-            if all(valid(ticket.split(',')[i], field) for ticket in tickets):
-                # print('TRUE')
-                poss[i].append(field)
-
-    final = [None] * lf
-    while len([x for x in final if x != None]) < len(final):
-        for i, p in enumerate(poss):
-            print(i, [x.split(':')[0] for x in p])
-        for i, p in enumerate(poss):
-            if len(p) == 1:
-                loner = p[0]
-                final[i] = loner
-                for x in poss:
-                    if loner in x:
-                        x.remove(loner)
+    valid = [mine]
+    for ticket in near:
+        valid.append(ticket)
+        for v in ticket:
+            if not any(f(v) for f in fields.values()):
+                valid.pop()
                 break
-    
-    print(final)
-    return math.prod(int(mine[1].split(',')[i]) for i, field in enumerate(final) if field.startswith('departure'))
+
+    # [print(x) for x in valid]
+    maybe = [{field
+        for field, f in fields.items() if all(f(x[i]) for x in valid)}
+            for i in range(len(fields))]
+
+    final = [None] * len(fields)
+    while not all(final):
+        # [print(*x) for x in enumerate(maybe)]
+        for i, poss in enumerate(maybe):
+            if len(poss) == 1:
+                final[i] = poss.pop()
+                for x in maybe:
+                    x.discard(final[i])
+
+        print(final)
+
+    return math.prod(mine[i] for i, field in enumerate(final) if field.startswith('departure'))
 
 main(solve1, solve2)

@@ -2,7 +2,7 @@
 import sys, re, math, itertools, heapq
 from utils import clip, main
 from collections import Counter, defaultdict, deque, OrderedDict
-from functools import reduce, lru_cache
+from functools import partial, reduce, lru_cache
 
 lines = [x.strip() for x in sys.stdin]
 # lines = [int(x) for x in sys.stdin]
