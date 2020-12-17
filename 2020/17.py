@@ -4,67 +4,110 @@ from collections import Counter
 
 lines = [list(x.strip()) for x in sys.stdin]
 
-def apply(mat, f):
+def mat_iterate(mat):
     def iterate(inner, indices):
         for i, val in enumerate(inner):
             newi = indices[:] + [i]
-            yield list(iterate(val, newi)) if isinstance(val, list) else f(val, newi)
+            if isinstance(val, list):
+                yield from iterate(val, newi)
+            else:
+                yield [val, *newi]
+    yield from iterate(mat, [])
+
+def mat_apply(mat, func):
+    def iterate(inner, indices):
+        for i, val in enumerate(inner):
+            newi = indices[:] + [i]
+            if isinstance(val, list):
+                yield list(iterate(val, newi))
+            else:
+                yield func(val, *newi)
     return list(iterate(mat, []))
 
-def a(v, i):
+def mat_shape(mat):
+    shape = []
+    while isinstance(mat, list):
+        shape.append(len(mat))
+        if len(mat) == 0:
+            break
+        mat = mat[0]
+    return shape
+
+def mat_sum(mat, selector = None):
+    return sum((selector(val) if selector != None else val) for val, *_ in mat_iterate(mat))
+
+# def mat_neighbors(mat):
+
+
+def a(v, *i):
     print(i, v)
     return v + '.'
 
-print(apply([lines], a))
+
+for v, *i in mat_iterate([lines]):
+    print(i, v)
 
 def expand3(base):
-    grid = [[['.' for k in range(len(base[0][0])+2)] for j in range(len(base[0])+2)] for i in range(len(base)+2)]
-    for i, row in enumerate(base):
-        for j, col in enumerate(row):
-            for k, val in enumerate(col):
-                grid[i+1][j+1][k+1] = base[i][j][k]
+    shape = mat_shape(base)
+    grid = [[['.'
+        for k in range(shape[2]+2)]
+        for j in range(shape[1]+2)]
+        for i in range(shape[0]+2)]
+    def update(val,i,j,k): grid[i+1][j+1][k+1] = val
+    mat_apply(base, update)
     return grid
 
 def expand4(base):
-    grid = [[[['.' for l in range(len(base[0][0][0])+2)] for k in range(len(base[0][0])+2)] for j in range(len(base[0])+2)] for i in range(len(base)+2)]
-    for i, row in enumerate(base):
-        for j, col in enumerate(row):
-            for k, wat in enumerate(col):
-                for l, val in enumerate(wat):
-                    grid[i+1][j+1][k+1][l+1] = base[i][j][k][l]
+    grid = [[[['.'
+        for l in range(shape[3]+2)]
+        for k in range(shape[2]+2)]
+        for j in range(shape[1]+2)]
+        for i in range(shape[0]+2)]
+    def update(val,i,j,k,l): grid[i+1][j+1][k+1][l+1] = val
+    mat_apply(base, update)
     return grid
 
-expand4([lines])
-
 def solve1():
-    grid = expand3(lines)
+    grid = expand3([lines])
     for step in range(6):
-        print(step)
-        nxt = [[['.' for _ in col] for col in row] for row in grid]
-        for i, row in enumerate(grid):
-            for j, col in enumerate(row):
-                for k, val in enumerate(col):
-                    n = sum(grid[i+di][j+dj][k+dk] == '#' for di in (-1,0,1) for dj in (-1,0,1) for dk in (-1,0,1)
-                        if 0 <= i+di < len(grid) and 0 <= j+dj < len(grid[i]) and 0 <= k+dk < len(grid[i][j]) and (di,dj,dk) != (0,0,0))
-                    if n == 3 or (val == '#' and n == 2):
-                        nxt[i][j][k] = '#'
-        grid = expand3(nxt)
-    return sum(grid[i][j][k] == '#' for i in range(len(grid)) for j in range(len(grid[0])) for k in range(len(grid[0][0])))
+        shape = mat_shape(grid)
+        print(step, shape)
+        def update(val,i,j,k):
+            n = sum(grid[i+di][j+dj][k+dk] == '#'
+                for di in (-1,0,1)
+                for dj in (-1,0,1)
+                for dk in (-1,0,1)
+                if (di,dj,dk) != (0,0,0)
+                and 0 <= i+di < shape[0]
+                and 0 <= j+dj < shape[1]
+                and 0 <= k+dk < shape[2]
+            )
+            return '#' if n == 3 or (val == '#' and n == 2) else '.'
+
+        grid = expand3(mat_apply(grid, update))
+
+    return mat_sum(grid, lambda x: x == '#')
 
 def solve2():
-    grid = expand4([lines])
+    grid = expand4([[lines]])
     for step in range(6):
         print(step)
-        nxt = [[[['.' for _ in wat] for wat in col] for col in row] for row in grid]
-        for i, row in enumerate(grid):
-            for j, col in enumerate(row):
-                for k, wat in enumerate(col):
-                    for l, val in enumerate(wat):
-                        n = sum(grid[i+di][j+dj][k+dk][l+dl] == '#' for di in (-1,0,1) for dj in (-1,0,1) for dk in (-1,0,1) for dl in (-1,0,1)
-                            if 0 <= i+di < len(grid) and 0 <= j+dj < len(grid[i]) and 0 <= k+dk < len(grid[i][j]) and 0 <= l+dl < len(grid[i][j][k]) and (di,dj,dk,dl) != (0,0,0,0))
-                        if n == 3 or (val == '#' and n == 2):
-                            nxt[i][j][k][l] = '#'
-        grid = expand4(nxt)
-    return sum(grid[i][j][k][l] == '#' for i in range(len(grid)) for j in range(len(grid[0])) for k in range(len(grid[0][0])) for l in range(len(grid[0][0][0])))
+        def update(val,i,j,k,l):
+            n = sum(grid[i+di][j+dj][k+dk][l+dl] == '#'
+                for di in (-1,0,1)
+                for dj in (-1,0,1)
+                for dk in (-1,0,1)
+                for dl in (-1,0,1)
+                if (di,dj,dk,dl) != (0,0,0,0)
+                and 0 <= i+di < shape[0]
+                and 0 <= j+dj < shape[1]
+                and 0 <= k+dk < shape[2]
+                and 0 <= l+dl < shape[3]
+            )
+            return '#' if n == 3 or (val == '#' and n == 2) else '.'
+
+        grid = expand4(mat_apply(grid, update))
+
+    return mat_sum(grid, lambda x: x == '#')
 
 main(solve1, solve2)
