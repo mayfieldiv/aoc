@@ -1,8 +1,13 @@
 import subprocess
+import platform
 
 def clip(obj):
     s = str(obj).strip()
-    cmd = 'printf ' + s + ' | xsel --clipboard'
+    if platform.system() == 'Darwin':
+        cmd = 'printf ' + s + ' | pbcopy'
+    else:
+        cmd = 'printf ' + s + ' | xsel --clipboard'
+
     subprocess.check_call(cmd, shell=True)
     print('Copied "' + s + '" to clipboard')
 
