@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|it| {
             dbg!(it);
             it.trim()
-                .split("\n")
+                .split('\n')
                 .map(|it| it.parse::<u32>().unwrap())
                 .reduce(|acc, it| acc + it)
                 .unwrap()

@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let total = input
         .trim()
-        .split("\n")
+        .split('\n')
         .map(|line| {
             let score = if cfg!(part_1) {
                 let (opp, me) = line.split_once(' ').unwrap();

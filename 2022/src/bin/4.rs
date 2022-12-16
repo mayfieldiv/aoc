@@ -17,6 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         let a = a_start..=a_end;
         let b = b_start..=b_end;
+
+        #[allow(clippy::collapsible_else_if)]
         if cfg!(part_1) {
             if (a.contains(&b_start) && a.contains(&b_end))
                 || (b.contains(&a_start) && b.contains(&a_end))
