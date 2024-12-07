@@ -1,6 +1,6 @@
 #![feature(array_windows)]
 
-fn main1() -> anyhow::Result<()> {
+fn _main() -> anyhow::Result<()> {
 	let mut input = String::new();
 	std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)?;
 	let lines: Vec<_> = input.trim().split('\n').collect();
