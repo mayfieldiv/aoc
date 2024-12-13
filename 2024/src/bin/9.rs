@@ -23,68 +23,37 @@ fn main() -> anyhow::Result<()> {
 		nodes.push(meta, num as usize);
 	}
 
-	println!("{:?}", nodes);
+	println!("{nodes}");
 
-	let mut left = nodes.first().unwrap();
-	let mut right = nodes.last().unwrap();
-	// let mut previous_file_index = 0;
+	let mut left = nodes.first().unwrap().idx;
+	let mut right = nodes.last().unwrap().idx;
 
 	while left != right {
-		// nodes[from_end] = normalize(nodes[from_end].clone());
-		// if matches!(nodes[from_end], Node::File { file_size: 0, .. }) {
-		// 	nodes[from_end] = Node::Nothing;
-		// }
-
-		// println!("{:?} {:?}", nodes[from_start], nodes[from_end]);
-		println!("{:?}", nodes);
-
-		if !left.is_free() {
-			left = left.next(&nodes).unwrap();
-			// previous_file_index = left_index;
-		} else if right.size == 0 {
-			right = right.prev(&nodes).unwrap();
+		// println!("{nodes}");
+		let left_node = nodes.get(left).unwrap();
+		let right_node = nodes.get(right).unwrap();
+		if !left_node.is_free() {
+			left = left_node.next(&nodes).unwrap().idx;
+		} else if !right_node.is_file() {
+			right = right_node.prev(&nodes).unwrap().idx;
 		} else {
-			println!("left: {:?} {:?}", left.size, left.meta);
-			println!("right: {:?} {:?}", right.size, right.meta);
-			if left.size >= right.size {
-				left.size -= right.size;
-				right.size = 0;
+			// println!("left: {:?}", left);
+			// println!("right: {:?}", right);
+			let free_size = left_node.size;
+			let file_size = right_node.size;
+			if free_size >= file_size {
+				nodes.insert_after(left_node.prev_idx, right_node.meta, file_size);
+				nodes.get_mut(left).size -= file_size;
+				nodes.get_mut(right).size = 0;
+			} else {
+				nodes.insert_after(left_node.prev_idx, right_node.meta, free_size);
+				nodes.get_mut(left).size = 0;
+				nodes.get_mut(right).size -= free_size;
 			}
-			todo!()
-			// if let Node::File { file_size, id } = nodes[right_index] {
-			// 	nodes[right_index] = Node::File {
-			// 		id,
-			// 		file_size: file_size - 1,
-			// 	};
-			// 	if let Node::File {
-			// 		id: previous_id,
-			// 		file_size: previous_file_size,
-			// 	} = nodes[previous_file_index]
-			// 		&& previous_id == id
-			// 	{
-			// 		nodes[previous_file_index] = Node::File {
-			// 			id: previous_id,
-			// 			file_size: previous_file_size + 1,
-			// 		};
-			// 		left = Node::Nothing;
-			// 		left_index += 1;
-			// 	} else {
-			// 		left = Node::File { id, file_size: 1 };
-			// 		previous_file_index = left_index;
-			// 	}
-
-			// 	nodes[right_index] = Node::File {
-			// 		id,
-			// 		file_size: file_size - 1,
-			// 	};
-			// 	nodes.push(Node::Free);
-			// } else {
-			// 	panic!("Expected file");
-			// }
 		}
 	}
 
-	println!("{:?}", nodes);
+	println!("{nodes}");
 
 	let mut result = 0;
 	let mut position = 0;
@@ -103,23 +72,24 @@ fn main() -> anyhow::Result<()> {
 }
 
 mod node {
-	use std::fmt::Debug;
+	use std::fmt::{Debug, Display};
 
-	#[derive(Clone, PartialEq, Eq)]
+	#[derive(Debug, Clone, PartialEq, Eq)]
 	pub struct Node {
-		prev_idx: Option<usize>,
-		next_idx: Option<usize>,
+		pub idx: usize,
+		pub prev_idx: Option<usize>,
+		pub next_idx: Option<usize>,
 		pub size: usize,
 		pub meta: NodeMeta,
 	}
 
-	#[derive(Debug, Clone, PartialEq, Eq)]
+	#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 	pub enum NodeMeta {
 		File { id: usize },
 		Free,
 	}
 
-	impl Debug for Node {
+	impl Display for Node {
 		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 			match self.meta {
 				NodeMeta::File { id } => write!(f, "{}", id.to_string().repeat(self.size)),
@@ -130,7 +100,11 @@ mod node {
 
 	impl Node {
 		pub fn is_free(&self) -> bool {
-			matches!(self.meta, NodeMeta::Free)
+			matches!(self.meta, NodeMeta::Free) && self.size > 0
+		}
+
+		pub fn is_file(&self) -> bool {
+			matches!(self.meta, NodeMeta::File { .. }) && self.size > 0
 		}
 
 		pub fn prev<'a>(&self, nodes: &'a NodeCollection) -> Option<&'a Node> {
@@ -148,10 +122,10 @@ mod node {
 		last: Option<usize>,
 	}
 
-	impl Debug for NodeCollection {
+	impl Display for NodeCollection {
 		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			for node in &self.nodes {
-				write!(f, "{:?}", node)?;
+			for node in self.iter() {
+				write!(f, "{}", node)?;
 			}
 			Ok(())
 		}
@@ -178,15 +152,40 @@ mod node {
 			self.last.map(|idx| &self.nodes[idx])
 		}
 
+		pub fn insert_after(&mut self, idx: Option<usize>, meta: NodeMeta, size: usize) {
+			let new_idx = self.nodes.len();
+			let next_idx = idx.and_then(|i| self.nodes[i].next_idx);
+
+			self.nodes.push(Node {
+				idx: new_idx,
+				size,
+				meta,
+				prev_idx: idx,
+				next_idx,
+			});
+
+			if let Some(idx) = idx {
+				self.nodes[idx].next_idx = Some(new_idx);
+			}
+			if let Some(next_idx) = next_idx {
+				self.nodes[next_idx].prev_idx = Some(new_idx);
+			}
+		}
+
+		pub fn get_mut(&mut self, idx: usize) -> &mut Node {
+			&mut self.nodes[idx]
+		}
+
 		pub fn push(&mut self, meta: NodeMeta, size: usize) {
+			let new_idx = self.nodes.len();
 			let mut node = Node {
+				idx: new_idx,
 				size,
 				meta,
 				prev_idx: None,
 				next_idx: None,
 			};
 
-			let new_idx = self.nodes.len();
 			if let Some(last_idx) = self.last {
 				self.nodes[last_idx].next_idx = Some(new_idx);
 				node.prev_idx = Some(last_idx);
